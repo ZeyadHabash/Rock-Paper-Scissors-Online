@@ -43,22 +43,25 @@ public class GameManager : NetworkBehaviour
     // NOTE: Do not put objects in DontDestroyOnLoad (DDOL) in Awake.  You can do that in Start instead.
     void Awake()
     {
+        // TODO: I commented this out because I'm having issues and not sure if this is what's causing it
+        // will bring it back later maybe
+
         // Ensure only one instance of GameManager exists
-        if (Instance == null)
-        {
-            Instance = this;
-        }
-        else
-        {
-            Destroy(gameObject); // Destroy duplicate instances
-        }
+        // if (Instance == null)
+        // {
+        Instance = this;
+        // }
+        // else
+        // {
+        //     Destroy(gameObject); // Destroy duplicate instances
+        // }
     }
 
     void Start()
     {
         // moved this to Start to heed the warning about DontDestroyOnLoad
         // but not sure if this would work correctly in a multiplayer context
-        DontDestroyOnLoad(gameObject); // Keep GameManager across scenes
+        // DontDestroyOnLoad(gameObject); // Keep GameManager across scenes
     }
 
     #endregion
@@ -141,7 +144,6 @@ public class GameManager : NetworkBehaviour
             // Check if we can start the game
             if (_players.Count == 2 && CurrentGameState == GameState.WaitingForPlayers)
             {
-                CurrentGameState = GameState.InProgress;
                 StartRound();
             }
         }
@@ -150,33 +152,42 @@ public class GameManager : NetworkBehaviour
     [Server]
     public void StartRound()
     {
-        if (CurrentGameState == GameState.InProgress)
-        {
-            // Reset player choices
-            _playerChoices.Clear();
+        CurrentGameState = GameState.InProgress;
+        // Reset player choices
+        _playerChoices.Clear();
 
-            foreach (var player in _players)
-            {
-                player.Choice = PlayerChoice.None;
-            }
+        foreach (var player in _players)
+        {
+            player.Choice = PlayerChoice.None;
         }
     }
 
     [Server]
     public void PlayerMadeChoice(PlayerController player, PlayerChoice choice)
     {
-        if (CurrentGameState == GameState.InProgress && _players.Contains(player))
+        if (CurrentGameState != GameState.InProgress)
         {
-            // Store the player's choice
-            _playerChoices[player] = choice;
-            Debug.Log($"Player {player.PlayerName} made choice: {choice}");
-
-            // Check if all players have made their choices
-            if (_playerChoices.Count == _players.Count)
-            {
-                DetermineRoundWinner();
-            }
+            Debug.LogWarning($"Player {player.PlayerName} tried to make a choice while the game is not in progress.");
+            return;
         }
+
+        if (!_players.Contains(player))
+        {
+            Debug.LogWarning($"Player {player.PlayerName} is not registered in the game.");
+            return;
+        }
+
+
+        // Store the player's choice
+        _playerChoices[player] = choice;
+        Debug.Log($"Player {player.PlayerName} made choice: {choice}");
+
+        // Check if all players have made their choices
+        if (_playerChoices.Count == _players.Count)
+        {
+            DetermineRoundWinner();
+        }
+
     }
 
     [Server]
@@ -215,7 +226,7 @@ public class GameManager : NetworkBehaviour
             p2.PlayerScore++;
         }
 
-        RpcShowResults(result);
+        RpcShowResults(result, p1.PlayerName, p1.Choice, p2.PlayerName, p2.Choice);
         Invoke(nameof(StartRound), 3f); // Restart the round after 3 seconds
     }
 
@@ -224,21 +235,25 @@ public class GameManager : NetworkBehaviour
     #region Client RPCs
 
     [ClientRpc]
-    public void RpcShowResults(string result)
+    public void RpcShowResults(string result, string player1Name, PlayerChoice player1Choice, string player2Name, PlayerChoice player2Choice)
     {
         Debug.Log($"RPC Show Results: {result}");
 
-        PlayerController p1 = _players[0];
-        PlayerController p2 = _players[1];
-
-        string choicesMessage = $"{p1.PlayerName} played {p1.Choice}\n{p2.PlayerName} played {p2.Choice}";
+        string choicesMessage = $"{player1Name} played {player1Choice}\n{player2Name} played {player2Choice}";
 
         UIManager.Instance.ShowRoundResults(result + "\n" + choicesMessage);
     }
 
-    [ClientRpc] //not sure if this should be an Rpc
+    #endregion
+
+    #region SyncVar Hooks
     private void OnGameStateChanged(GameState oldState, GameState newState)
     {
+        if (!NetworkClient.active || UIManager.Instance == null)
+        {
+            return;
+        }
+
         Debug.Log($"Game state changed from {oldState} to {newState}");
 
         UIManager.Instance.UpdateStateText(newState.ToString());
@@ -252,8 +267,5 @@ public class GameManager : NetworkBehaviour
             UIManager.Instance.ShowGameUI(false);
         }
     }
-    #endregion
-
-    #region SyncVar Hooks
     #endregion
 }

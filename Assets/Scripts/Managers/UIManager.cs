@@ -37,8 +37,14 @@ public class UIManager : MonoBehaviour
         scissorsButton.onClick.AddListener(() => MakeChoice(PlayerChoice.Scissors));
     }
 
+    public void DebugLog(string message)
+    {
+        Debug.Log(message);
+    }
+
     void MakeChoice(PlayerChoice choice)
     {
+        Debug.Log($"Making choice: {choice}");
         // Find the local player object and call its command
         PlayerController localPlayer = NetworkClient.localPlayer.GetComponent<PlayerController>();
         if (localPlayer != null)
