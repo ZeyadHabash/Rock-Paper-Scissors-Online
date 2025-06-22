@@ -127,7 +127,6 @@ public class PlayerController : NetworkBehaviour
     [Command]
     public void CmdMakeChoice(PlayerChoice choice)
     {
-        // Validate the choice
         if (choice == PlayerChoice.None)
         {
             Debug.LogWarning("Invalid choice made by player: " + PlayerName);

@@ -141,7 +141,7 @@ public class GameManager : NetworkBehaviour
         {
             _players.Add(player);
 
-            // Check if we can start the game
+
             if (_players.Count == 2 && CurrentGameState == GameState.WaitingForPlayers)
             {
                 StartRound();
@@ -153,7 +153,7 @@ public class GameManager : NetworkBehaviour
     public void StartRound()
     {
         CurrentGameState = GameState.InProgress;
-        // Reset player choices
+
         _playerChoices.Clear();
 
         foreach (var player in _players)
@@ -178,11 +178,9 @@ public class GameManager : NetworkBehaviour
         }
 
 
-        // Store the player's choice
         _playerChoices[player] = choice;
         Debug.Log($"Player {player.PlayerName} made choice: {choice}");
 
-        // Check if all players have made their choices
         if (_playerChoices.Count == _players.Count)
         {
             DetermineRoundWinner();
@@ -195,7 +193,7 @@ public class GameManager : NetworkBehaviour
     {
         if (CurrentGameState != GameState.InProgress) return;
 
-        CurrentGameState = GameState.GameOver; // Set to GameOver temporarily to prevent further actions
+        CurrentGameState = GameState.GameOver;
 
         PlayerController p1 = _players[0];
         PlayerController p2 = _players[1];
@@ -226,18 +224,35 @@ public class GameManager : NetworkBehaviour
             p2.PlayerScore++;
         }
 
-        RpcShowResults(result, p1.PlayerName, p1.Choice, p2.PlayerName, p2.Choice);
-        Invoke(nameof(StartRound), 3f); // Restart the round after 3 seconds
+        if (choice1 == choice2)
+        {
+            TargetRpcShowResults(p1.connectionToClient, "It's a tie!", p1.PlayerName, p1.Choice, p2.PlayerName, p2.Choice, false);
+            TargetRpcShowResults(p2.connectionToClient, "It's a tie!", p1.PlayerName, p1.Choice, p2.PlayerName, p2.Choice, false);
+        }
+        else if (result.Contains(p1.PlayerName))
+        {
+            // Player 1 wins
+            TargetRpcShowResults(p1.connectionToClient, "You Win!", p1.PlayerName, p1.Choice, p2.PlayerName, p2.Choice, true);
+            TargetRpcShowResults(p2.connectionToClient, "You Lose!", p1.PlayerName, p1.Choice, p2.PlayerName, p2.Choice, false);
+        }
+        else
+        {
+            // Player 2 wins
+            TargetRpcShowResults(p1.connectionToClient, "You Lose!", p1.PlayerName, p1.Choice, p2.PlayerName, p2.Choice, false);
+            TargetRpcShowResults(p2.connectionToClient, "You Win!", p1.PlayerName, p1.Choice, p2.PlayerName, p2.Choice, true);
+        }
+
+        Invoke(nameof(StartRound), 3f);
     }
 
     #endregion
 
-    #region Client RPCs
+    #region Target RPCs
 
-    [ClientRpc]
-    public void RpcShowResults(string result, string player1Name, PlayerChoice player1Choice, string player2Name, PlayerChoice player2Choice)
+    [TargetRpc]
+    public void TargetRpcShowResults(NetworkConnectionToClient target, string result, string player1Name, PlayerChoice player1Choice, string player2Name, PlayerChoice player2Choice, bool isWinner)
     {
-        Debug.Log($"RPC Show Results: {result}");
+        Debug.Log($"Target RPC Show Results: {result}");
 
         string choicesMessage = $"{player1Name} played {player1Choice}\n{player2Name} played {player2Choice}";
 

@@ -17,21 +17,19 @@ public class UIManager : MonoBehaviour
 
     void Awake()
     {
-        // Ensure only one instance of UIManager exists
         if (Instance == null)
         {
             Instance = this;
-            DontDestroyOnLoad(gameObject); // Keep this object across scenes
+            DontDestroyOnLoad(gameObject);
         }
         else
         {
-            Destroy(gameObject); // Destroy duplicate instances
+            Destroy(gameObject); 
         }
     }
 
     void Start()
     {
-        // Add listeners to the buttons to call the command on the local player
         rockButton.onClick.AddListener(() => MakeChoice(PlayerChoice.Rock));
         paperButton.onClick.AddListener(() => MakeChoice(PlayerChoice.Paper));
         scissorsButton.onClick.AddListener(() => MakeChoice(PlayerChoice.Scissors));
@@ -45,12 +43,11 @@ public class UIManager : MonoBehaviour
     void MakeChoice(PlayerChoice choice)
     {
         Debug.Log($"Making choice: {choice}");
-        // Find the local player object and call its command
         PlayerController localPlayer = NetworkClient.localPlayer.GetComponent<PlayerController>();
         if (localPlayer != null)
         {
             localPlayer.CmdMakeChoice(choice);
-            ShowGameUI(false); // Hide buttons after making a choice
+            ShowGameUI(false);
             gameStateText.text = "Waiting for opponent...";
         }
     }
@@ -68,7 +65,6 @@ public class UIManager : MonoBehaviour
     public void ShowGameUI(bool show)
     {
         choicePanel.SetActive(show);
-        // When showing choice buttons, clear the previous result
         if (show)
         {
             resultText.text = "";
